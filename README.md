@@ -53,7 +53,7 @@ Copy `scripts/before_bed.yaml` and change the words. Wrap words in `*asterisks*`
 ```yaml
 title: Your brain decides tomorrow, tonight
 hook: Do this *before bed*            # shown big on the first frame, and spoken first
-voice: en-US-AndrewNeural             # e.g. en-IN-PrabhatNeural, hi-IN-MadhurNeural
+voice: en-US-AndrewNeural             # e.g. hi-IN-MadhurNeural, or elevenlabs:VOICE_ID
 rate: "-5%"                           # speaking speed
 pitch: "+0Hz"                         # e.g. "-8Hz" for a deeper voice
 voice_fx: warm                        # warm (AI voice), clean (your recording) or none
@@ -86,6 +86,27 @@ second between lines**. The editor finds the line breaks at those pauses, trims 
 silence and shortens every pause to `pause:`, cleans up the phone sound (`voice_fx: clean`),
 and syncs the captions to your voice. If it finds a different number of parts than lines,
 it tells you to record again with clearer pauses.
+
+For exact word-by-word captions on a recording, install speech recognition once with
+`pip install faster-whisper`. The editor then matches every word you say to the script,
+so it also drops anything you said that is not in the script, like a line number or a
+retake. Without it, the editor splits the recording at its pauses.
+
+### ElevenLabs voices (the most lifelike)
+
+Use any voice from your ElevenLabs account for every video, with exact word timing:
+
+1. In ElevenLabs, add the voice to **My Voices** and copy its **Voice ID**.
+2. Create an API key (Profile, API keys) and set it before rendering:
+
+   ```bash
+   export ELEVENLABS_API_KEY=your_key        # Windows PowerShell: $env:ELEVENLABS_API_KEY="your_key"
+   ```
+3. In the script: `voice: elevenlabs:VOICE_ID`
+
+Optional settings: `ELEVENLABS_MODEL` (default `eleven_multilingual_v2`),
+`ELEVENLABS_STABILITY` (0.5) and `ELEVENLABS_SIMILARITY` (0.75). Every line uses your
+ElevenLabs character credits.
 
 ### Hindi
 

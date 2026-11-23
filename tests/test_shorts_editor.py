@@ -187,7 +187,7 @@ def test_own_recording_is_split_into_lines_and_pauses_shortened(tmp_path):
     _fake_recording(rec, [1.5, 3.0, 2.0], [1.4, 1.2])
     hook = script.parse_line("Do this before bed")
     lines = [script.parse_line("One two three four"), script.parse_line("Five six")]
-    nar = narrate_recording(rec, hook, lines, pause=0.3)
+    nar = narrate_recording(rec, hook, lines, pause=0.3, use_transcript=False)
     spans = [nar.line_spans[k] for k in (-1, 0, 1)]
     assert [round(e - s, 1) for s, e in spans] == pytest.approx([1.7, 3.2, 2.2], abs=0.15)
     # The 0.8 s lead-in and the long pauses are gone: 1.5+3+2 of speech plus short pauses.
@@ -202,9 +202,59 @@ def test_recording_with_a_missing_line_explains_what_to_do(tmp_path):
     _fake_recording(rec, [1.5, 2.0], [1.2])
     lines = [script.parse_line("a b"), script.parse_line("c d")]
     with pytest.raises(ValueError, match="Pause for about a second"):
-        narrate_recording(rec, script.parse_line("hook"), lines)
+        narrate_recording(rec, script.parse_line("hook"), lines, use_transcript=False)
 
 
 def test_script_with_narration_defaults_to_clean_voice(tmp_path):
     s = script.load(write_script(tmp_path, "narration: me.m4a\n"))
     assert s.narration == "me.m4a" and s.voice_fx == "clean"
+
+
+def test_elevenlabs_character_timings_become_word_timings():
+    from shorts_editor.tts import words_from_characters
+
+    text = "तब श्रीकृष्ण ने"
+    starts = [i * 0.1 for i in range(len(text))]
+    ends = [s + 0.1 for s in starts]
+    words = words_from_characters(text, starts, ends)
+    assert len(words) == 3
+    assert words[0] == (0.0, pytest.approx(0.2)) and words[2][1] == pytest.approx(ends[-1])
+
+
+def test_elevenlabs_voice_is_used_with_a_key(tmp_path, monkeypatch):
+    import base64
+    import io
+    import urllib.request
+
+    from shorts_editor import tts
+
+    tone = tmp_path / "tone.mp3"
+    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=f=220:d=1", str(tone)], check=True)
+    sent = {}
+
+    def fake_urlopen(req, timeout=0):
+        sent["url"], sent["key"] = req.full_url, req.headers.get("Xi-api-key")
+        text = json.loads(req.data)["text"]
+        n = len(text)
+        payload = {"audio_base64": base64.b64encode(tone.read_bytes()).decode(),
+                   "alignment": {"characters": list(text),
+                                 "character_start_times_seconds": [i / n for i in range(n)],
+                                 "character_end_times_seconds": [(i + 1) / n for i in range(n)]}}
+        return io.BytesIO(json.dumps(payload).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+    nar = tts.narrate(script.parse_line("Do this"), [script.parse_line("one two three")], "elevenlabs:abc123")
+    assert sent["url"].endswith("/abc123/with-timestamps") and sent["key"] == "test-key"
+    assert len(nar.words) == 5 and nar.duration > 2.0
+    monkeypatch.delenv("ELEVENLABS_API_KEY")
+    with pytest.raises(RuntimeError, match="ELEVENLABS_API_KEY"):
+        tts.narrate(script.parse_line("x"), [], "elevenlabs:abc123")
+
+
+def test_word_matching_skips_spoken_line_numbers():
+    from shorts_editor.recording import match_words
+
+    script_words = ["सामने", "उसके", "अपने", "ही", "गुरु"]
+    heard = ["तीन,", "सामने", "उसके", "अपने", "ही", "गुरू"]
+    assert match_words(script_words, heard) == [1, 2, 3, 4, 5]

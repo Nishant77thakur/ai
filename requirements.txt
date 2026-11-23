@@ -2,5 +2,7 @@ edge-tts>=7.0
 numpy>=1.26
 pillow>=10.0
 pyyaml>=6.0
+# optional: precise word timing for your own recordings (downloads a ~500 MB model once)
+# faster-whisper>=1.1
 # tests
 pytest>=8.0

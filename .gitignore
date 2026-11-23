@@ -208,3 +208,5 @@ __marimo__/
 
 # rendered videos
 output/
+# your voice recordings (kept out of git)
+scripts/recordings/

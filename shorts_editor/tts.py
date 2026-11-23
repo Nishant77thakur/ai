@@ -94,6 +94,78 @@ async def _edge(text: str, voice: str, rate: str, mp3: Path, pitch: str = "+0Hz"
     return bounds
 
 
+ELEVENLABS_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/with-timestamps"
+
+
+def words_from_characters(text: str, starts: list[float], ends: list[float]) -> list[tuple[float, float]]:
+    """Group per-character timings (as ElevenLabs returns them) into per-word timings."""
+    out, cur = [], None
+    for ch, s, e in zip(text, starts, ends):
+        if ch.isspace():
+            if cur:
+                out.append(cur)
+            cur = None
+        elif cur is None:
+            cur = (s, e)
+        else:
+            cur = (cur[0], e)
+    if cur:
+        out.append(cur)
+    return out
+
+
+def _elevenlabs(line: Line, voice_id: str, mp3: Path) -> list[tuple[float, float]]:
+    """A lifelike voice from your ElevenLabs account, with exact timing for every word.
+
+    Needs ELEVENLABS_API_KEY in the environment. Optional: ELEVENLABS_MODEL (default
+    eleven_multilingual_v2), ELEVENLABS_STABILITY (0.5), ELEVENLABS_SIMILARITY (0.75).
+    """
+    import base64
+    import json
+    import urllib.error
+    import urllib.request
+
+    key = os.environ.get("ELEVENLABS_API_KEY")
+    if not key:
+        raise RuntimeError("Set ELEVENLABS_API_KEY to use an ElevenLabs voice "
+                           "(ElevenLabs website: Profile, API keys).")
+    body = json.dumps({
+        "text": line.spoken,
+        "model_id": os.environ.get("ELEVENLABS_MODEL", "eleven_multilingual_v2"),
+        "voice_settings": {
+            "stability": float(os.environ.get("ELEVENLABS_STABILITY", "0.5")),
+            "similarity_boost": float(os.environ.get("ELEVENLABS_SIMILARITY", "0.75")),
+        },
+    }).encode()
+    req = urllib.request.Request(ELEVENLABS_URL.format(voice_id=voice_id), data=body, method="POST",
+                                 headers={"xi-api-key": key, "Content-Type": "application/json",
+                                          "Accept": "application/json"})
+    last_error = None
+    for attempt in range(RETRIES):
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                data = json.load(resp)
+            break
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode(errors="replace")[:300]
+            if exc.code in (401, 403):
+                raise RuntimeError(f"ElevenLabs refused the API key: {detail}") from exc
+            if exc.code == 404:
+                raise RuntimeError(f"ElevenLabs has no voice with id {voice_id!r}. Add the voice to "
+                                   f"'My Voices' and copy its ID.") from exc
+            last_error = f"{exc.code} {detail}"  # 429 busy or 5xx: wait and try again
+        except urllib.error.URLError as exc:
+            last_error = exc
+        time.sleep(RETRY_WAIT * (attempt + 1))
+    else:
+        raise RuntimeError(f"ElevenLabs did not answer for {line.spoken!r}: {last_error}")
+    mp3.write_bytes(base64.b64decode(data["audio_base64"]))
+    al = data.get("alignment") or data.get("normalized_alignment") or {}
+    return words_from_characters("".join(al.get("characters", [])),
+                                 al.get("character_start_times_seconds", []),
+                                 al.get("character_end_times_seconds", []))
+
+
 def _speak_line(line: Line, voice: str, rate: str, tmp: Path, i: int, pitch: str = "+0Hz"):
     weights = [max(1, len(w.text)) for w in line.words]
     if voice == "silent":
@@ -102,6 +174,10 @@ def _speak_line(line: Line, voice: str, rate: str, tmp: Path, i: int, pitch: str
         audio = np.zeros(int(dur * SAMPLE_RATE), dtype=np.float32)
         return audio, align(len(line.words), [], dur, weights)
     mp3 = tmp / f"line{i}.mp3"
+    if voice.startswith("elevenlabs:"):
+        bounds = _elevenlabs(line, voice.split(":", 1)[1], mp3)
+        audio = decode(mp3)
+        return audio, align(len(line.words), bounds, len(audio) / SAMPLE_RATE, weights)
     # The free voice service sometimes refuses a burst of requests: wait and try again.
     last_error = None
     for attempt in range(RETRIES):
