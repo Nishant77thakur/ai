@@ -4,7 +4,10 @@ hook: महाभारत का *सबसे बड़ा* सबक
 fonts: hindi
 logo: chakra
 voice: hi-IN-MadhurNeural
-rate: "-8%"
+rate: "-14%"             # slower, storyteller pace
+pitch: "-8Hz"            # deeper
+voice_fx: warm
+pause: 0.55
 background: stars        # warm embers rising over a dusk sky (colours below)
 music: auto
 music_volume: 0.2
@@ -25,7 +28,6 @@ lines:
   - यानी, तुम्हारा अधिकार सिर्फ़ *कर्म* पर है, उसके *फल* पर नहीं।
   - नतीजे के डर से रुको मत, अपना *पूरा मन* लगाओ।
   - इसी सीख ने अर्जुन को फिर से *खड़ा* कर दिया।
-  - यही है महाभारत की सबसे बड़ी *सीख*।
 end_card:
   title: Sleep with *Impact*
   subtitle: ऐसी और कहानियों के लिए फ़ॉलो करें

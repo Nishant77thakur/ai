@@ -45,7 +45,7 @@ def cmd_preview(args) -> int:
     from .tts import narrate
 
     short = script_mod.load(args.script)
-    nar = narrate(short.hook, short.lines, args.voice or short.voice, short.rate, short.pitch)
+    nar = narrate(short.hook, short.lines, args.voice or short.voice, short.rate, short.pitch, short.pause)
     r = Renderer(short, nar)
     out = Path(args.out_dir)
     out.mkdir(parents=True, exist_ok=True)

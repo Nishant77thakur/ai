@@ -8,7 +8,7 @@ from pathlib import Path
 from . import audio
 from .render import Renderer
 from .script import Short, resolve
-from .tts import Narration, narrate
+from .tts import Narration, narrate, polish
 
 
 @dataclass
@@ -39,7 +39,8 @@ def write_srt(short: Short, narration: Narration, path: Path) -> None:
 def make(short: Short, out: Path, voice: str | None = None, fps: int = 30, progress=None) -> Result:
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    narration = narrate(short.hook, short.lines, voice or short.voice, short.rate, short.pitch)
+    narration = narrate(short.hook, short.lines, voice or short.voice, short.rate, short.pitch, short.pause)
+    narration.audio = polish(narration.audio, short.voice_fx)
     renderer = Renderer(short, narration, fps=fps)
     duration = renderer.plan.duration
 

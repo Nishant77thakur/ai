@@ -60,6 +60,8 @@ class Short:
     voice: str = "en-US-AndrewNeural"
     rate: str = "-5%"
     pitch: str = "+0Hz"  # e.g. "-8Hz" for a deeper voice
+    voice_fx: str = "warm"  # "warm" or "none"
+    pause: float = 0.35  # seconds between sentences
     background: str = "stars"
     music: str = "auto"
     music_volume: float = 0.22
@@ -113,6 +115,8 @@ def load(path: str | Path) -> Short:
         background=str(data.get("background", "stars")),
         music=str(data.get("music", "auto")),
         music_volume=float(data.get("music_volume", 0.22)),
+        voice_fx=_choice(data.get("voice_fx", "warm"), ("warm", "none"), "voice_fx"),
+        pause=float(data.get("pause", 0.35)),
         fonts=str(data.get("fonts", "latin")),
         logo=_choice(data.get("logo", "moon"), ("moon", "chakra", "none"), "logo"),
         brand=brand,

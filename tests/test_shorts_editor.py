@@ -150,3 +150,15 @@ def test_image_background(tmp_path):
     frame = np.asarray(r.frame(5.0))
     assert frame.shape == (1920, 1080, 3)
     assert frame[1700:1800, :, 2].mean() > frame[1700:1800, :, 0].mean()  # the blue photo shows through
+
+
+def test_voice_polish_keeps_length_and_changes_the_sound():
+    from shorts_editor.tts import polish
+
+    t = np.arange(SAMPLE_RATE) / SAMPLE_RATE
+    tone = (0.3 * np.sin(2 * np.pi * 220 * t)).astype(np.float32)
+    out = polish(tone, "warm")
+    assert len(out) == len(tone) and not np.allclose(out, tone)
+    assert polish(tone, "none") is tone
+    with pytest.raises(ValueError):
+        polish(tone, "robot")

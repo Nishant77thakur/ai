@@ -120,7 +120,8 @@ def _speak_line(line: Line, voice: str, rate: str, tmp: Path, i: int, pitch: str
     return audio, align(len(line.words), bounds, len(audio) / SAMPLE_RATE, weights)
 
 
-def narrate(hook: Line, lines: list[Line], voice: str, rate: str = "-5%", pitch: str = "+0Hz") -> Narration:
+def narrate(hook: Line, lines: list[Line], voice: str, rate: str = "-5%", pitch: str = "+0Hz",
+            pause: float = GAP_AFTER_LINE) -> Narration:
     """Speak the hook then every line, one after another, and time every word."""
     pieces, words, spans = [], [], {}
     t = 0.0
@@ -131,7 +132,39 @@ def narrate(hook: Line, lines: list[Line], voice: str, rate: str = "-5%", pitch:
                 words.append(TimedWord(li, wi, t + s, t + e))
             dur = len(audio) / SAMPLE_RATE
             spans[li] = (t, t + dur)
-            gap = np.zeros(int(GAP_AFTER_LINE * SAMPLE_RATE), dtype=np.float32)
+            gap = np.zeros(int(pause * SAMPLE_RATE), dtype=np.float32)
             pieces += [audio, gap]
-            t += dur + GAP_AFTER_LINE
+            t += dur + pause
     return Narration(np.concatenate(pieces) if pieces else np.zeros(1, np.float32), words, spans)
+
+
+# Makes a synthetic voice sound less dry and digital: a little low-end warmth, presence
+# for clarity, gentle compression like a broadcast mic, and a faint small-room reflection.
+VOICE_FX = {
+    "none": None,
+    "warm": ("highpass=f=70,"
+             "bass=g=3.5:f=120:w=0.7,"
+             "equalizer=f=2800:t=q:w=1.2:g=2,"
+             "equalizer=f=7500:t=q:w=2:g=-2.5,"
+             "acompressor=threshold=-20dB:ratio=2.5:attack=8:release=120:makeup=2,"
+             "aecho=0.9:0.6:28|47:0.10|0.06"),
+}
+
+
+def polish(audio: np.ndarray, style: str = "warm") -> np.ndarray:
+    """Run the narration through VOICE_FX[style]; returns audio of the same length."""
+    chain = VOICE_FX.get(style, "missing")
+    if chain == "missing":
+        raise ValueError(f"voice_fx must be one of {', '.join(VOICE_FX)}, got {style!r}")
+    if chain is None or not np.any(audio):
+        return audio
+    out = subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "f32le", "-ar", str(SAMPLE_RATE), "-ac", "1", "-i", "-",
+         "-af", chain, "-f", "f32le", "-ar", str(SAMPLE_RATE), "-ac", "1", "-"],
+        input=audio.astype(np.float32).tobytes(), check=True, capture_output=True,
+    ).stdout
+    res = np.frombuffer(out, dtype=np.float32).copy()
+    # Keep the exact length so every word timing still lines up.
+    if len(res) < len(audio):
+        res = np.concatenate([res, np.zeros(len(audio) - len(res), np.float32)])
+    return res[: len(audio)]
