@@ -4,6 +4,7 @@ hook: महाभारत का *सबसे बड़ा* सबक
 fonts: hindi
 logo: chakra
 voice: hi-IN-MadhurNeural
+# narration: recordings/mahabharat_karma.m4a   # your own voice: uncomment to use it instead of the AI voice
 rate: "-14%"             # slower, storyteller pace
 pitch: "-8Hz"            # deeper
 voice_fx: warm

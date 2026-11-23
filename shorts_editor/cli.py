@@ -42,10 +42,10 @@ def cmd_make(args) -> int:
 
 def cmd_preview(args) -> int:
     from .render import Renderer
-    from .tts import narrate
+    from .pipeline import build_narration
 
     short = script_mod.load(args.script)
-    nar = narrate(short.hook, short.lines, args.voice or short.voice, short.rate, short.pitch, short.pause)
+    nar = build_narration(short, args.voice)
     r = Renderer(short, nar)
     out = Path(args.out_dir)
     out.mkdir(parents=True, exist_ok=True)

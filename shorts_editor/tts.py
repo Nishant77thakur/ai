@@ -142,6 +142,14 @@ def narrate(hook: Line, lines: list[Line], voice: str, rate: str = "-5%", pitch:
 # for clarity, gentle compression like a broadcast mic, and a faint small-room reflection.
 VOICE_FX = {
     "none": None,
+    # For a phone recording of a real voice: cut rumble and hiss, add body and clarity,
+    # and even out the level like a podcast mic. No added room sound.
+    "clean": ("highpass=f=80,"
+              "afftdn=nf=-30,"
+              "bass=g=2:f=130:w=0.7,"
+              "equalizer=f=3200:t=q:w=1.2:g=2.5,"
+              "deesser=i=0.4,"
+              "acompressor=threshold=-22dB:ratio=3:attack=5:release=100:makeup=3"),
     "warm": ("highpass=f=70,"
              "bass=g=3.5:f=120:w=0.7,"
              "equalizer=f=2800:t=q:w=1.2:g=2,"

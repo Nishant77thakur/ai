@@ -56,7 +56,8 @@ hook: Do this *before bed*            # shown big on the first frame, and spoken
 voice: en-US-AndrewNeural             # e.g. en-IN-PrabhatNeural, hi-IN-MadhurNeural
 rate: "-5%"                           # speaking speed
 pitch: "+0Hz"                         # e.g. "-8Hz" for a deeper voice
-voice_fx: warm                        # warm (less robotic) or none
+voice_fx: warm                        # warm (AI voice), clean (your recording) or none
+narration: my_recording.m4a           # optional: your own voice instead of the AI voice
 pause: 0.35                           # seconds between sentences
 background: stars                     # or my_photo.jpg / my_clip.mp4 (path relative to this file)
 music: auto                           # auto, none, or my_track.mp3
@@ -76,6 +77,15 @@ brand:                                # optional; these are the defaults
   sky_bottom: "#1B100B"
   particles: "#F4EDE4"                # stars (or embers, in a warm colour)
 ```
+
+### Your own voice
+
+Add `narration: my_recording.m4a` to a script and your recording replaces the AI voice.
+Read the hook and then every line, in order, exactly as written, and **pause for about a
+second between lines**. The editor finds the line breaks at those pauses, trims the
+silence and shortens every pause to `pause:`, cleans up the phone sound (`voice_fx: clean`),
+and syncs the captions to your voice. If it finds a different number of parts than lines,
+it tells you to record again with clearer pauses.
 
 ### Hindi
 
@@ -100,7 +110,8 @@ python -m pytest tests
 ```
 shorts_editor/
   script.py     reads the YAML script
-  tts.py        AI voice and word timings
+  tts.py        AI voice, word timings and voice polish
+  recording.py  your own recorded voice: line detection and pause trimming
   audio.py      generated music, sound effects, ducking and mixing
   render.py     motion graphics and video encoding
   pipeline.py   script in, video + captions + cover out

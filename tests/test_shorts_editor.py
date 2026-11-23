@@ -162,3 +162,49 @@ def test_voice_polish_keeps_length_and_changes_the_sound():
     assert polish(tone, "none") is tone
     with pytest.raises(ValueError):
         polish(tone, "robot")
+
+
+def _fake_recording(path, parts, gaps, noise=0.002):
+    """Tones standing in for spoken lines, separated by pauses, over faint room noise."""
+    rng = np.random.default_rng(0)
+    out = [np.zeros(int(0.8 * SAMPLE_RATE), np.float32)]
+    for i, dur in enumerate(parts):
+        t = np.arange(int(dur * SAMPLE_RATE)) / SAMPLE_RATE
+        # Short dips inside a "sentence", like breaths between words.
+        env = (np.sin(2 * np.pi * 3 * t) > -0.95).astype(np.float32)
+        out.append((0.3 * np.sin(2 * np.pi * 200 * t) * env).astype(np.float32))
+        out.append(np.zeros(int((gaps[i] if i < len(gaps) else 1.0) * SAMPLE_RATE), np.float32))
+    a = np.concatenate(out)
+    a += (noise * rng.standard_normal(len(a))).astype(np.float32)
+    audio.write_wav(path, a)
+
+
+def test_own_recording_is_split_into_lines_and_pauses_shortened(tmp_path):
+    from shorts_editor.recording import narrate_recording
+
+    rec = tmp_path / "me.wav"
+    # hook + 2 lines; one long breath inside line 1 must not count as a line break
+    _fake_recording(rec, [1.5, 3.0, 2.0], [1.4, 1.2])
+    hook = script.parse_line("Do this before bed")
+    lines = [script.parse_line("One two three four"), script.parse_line("Five six")]
+    nar = narrate_recording(rec, hook, lines, pause=0.3)
+    spans = [nar.line_spans[k] for k in (-1, 0, 1)]
+    assert [round(e - s, 1) for s, e in spans] == pytest.approx([1.7, 3.2, 2.2], abs=0.15)
+    # The 0.8 s lead-in and the long pauses are gone: 1.5+3+2 of speech plus short pauses.
+    assert nar.duration == pytest.approx(7.1 + 3 * 0.3, abs=0.3)
+    assert len(nar.words) == 4 + 4 + 2
+
+
+def test_recording_with_a_missing_line_explains_what_to_do(tmp_path):
+    from shorts_editor.recording import narrate_recording
+
+    rec = tmp_path / "me.wav"
+    _fake_recording(rec, [1.5, 2.0], [1.2])
+    lines = [script.parse_line("a b"), script.parse_line("c d")]
+    with pytest.raises(ValueError, match="Pause for about a second"):
+        narrate_recording(rec, script.parse_line("hook"), lines)
+
+
+def test_script_with_narration_defaults_to_clean_voice(tmp_path):
+    s = script.load(write_script(tmp_path, "narration: me.m4a\n"))
+    assert s.narration == "me.m4a" and s.voice_fx == "clean"

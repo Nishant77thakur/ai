@@ -60,7 +60,8 @@ class Short:
     voice: str = "en-US-AndrewNeural"
     rate: str = "-5%"
     pitch: str = "+0Hz"  # e.g. "-8Hz" for a deeper voice
-    voice_fx: str = "warm"  # "warm" or "none"
+    voice_fx: str = "warm"  # "warm", "clean" or "none"
+    narration: str = ""  # your own recording; when set, it replaces the AI voice
     pause: float = 0.35  # seconds between sentences
     background: str = "stars"
     music: str = "auto"
@@ -115,7 +116,10 @@ def load(path: str | Path) -> Short:
         background=str(data.get("background", "stars")),
         music=str(data.get("music", "auto")),
         music_volume=float(data.get("music_volume", 0.22)),
-        voice_fx=_choice(data.get("voice_fx", "warm"), ("warm", "none"), "voice_fx"),
+        # A real recording gets "clean" by default; the AI voice gets "warm".
+        voice_fx=_choice(data.get("voice_fx", "clean" if data.get("narration") else "warm"),
+                         ("warm", "clean", "none"), "voice_fx"),
+        narration=str(data.get("narration") or ""),
         pause=float(data.get("pause", 0.35)),
         fonts=str(data.get("fonts", "latin")),
         logo=_choice(data.get("logo", "moon"), ("moon", "chakra", "none"), "logo"),
