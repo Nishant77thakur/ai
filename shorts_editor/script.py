@@ -59,6 +59,7 @@ class Short:
     end_subtitle: str
     voice: str = "en-US-AndrewNeural"
     rate: str = "-5%"
+    pitch: str = "+0Hz"  # e.g. "-8Hz" for a deeper voice
     background: str = "stars"
     music: str = "auto"
     music_volume: float = 0.22
@@ -108,6 +109,7 @@ def load(path: str | Path) -> Short:
         end_subtitle=str(end.get("subtitle", "Follow for more")),
         voice=str(data.get("voice", "en-US-AndrewNeural")),
         rate=str(data.get("rate", "-5%")),
+        pitch=str(data.get("pitch", "+0Hz")),
         background=str(data.get("background", "stars")),
         music=str(data.get("music", "auto")),
         music_volume=float(data.get("music_volume", 0.22)),

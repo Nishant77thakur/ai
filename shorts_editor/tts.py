@@ -75,11 +75,11 @@ def align(n_words: int, boundaries: list[tuple[float, float]], duration: float,
     return spans
 
 
-async def _edge(text: str, voice: str, rate: str, mp3: Path) -> list[tuple[float, float]]:
+async def _edge(text: str, voice: str, rate: str, mp3: Path, pitch: str = "+0Hz") -> list[tuple[float, float]]:
     import edge_tts  # imported here so the silent voice works without it
 
     proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
-    kwargs = {"rate": rate, "boundary": "WordBoundary"}
+    kwargs = {"rate": rate, "pitch": pitch, "boundary": "WordBoundary"}
     if proxy:
         kwargs["proxy"] = proxy
     comm = edge_tts.Communicate(text, voice, **kwargs)
@@ -94,7 +94,7 @@ async def _edge(text: str, voice: str, rate: str, mp3: Path) -> list[tuple[float
     return bounds
 
 
-def _speak_line(line: Line, voice: str, rate: str, tmp: Path, i: int):
+def _speak_line(line: Line, voice: str, rate: str, tmp: Path, i: int, pitch: str = "+0Hz"):
     weights = [max(1, len(w.text)) for w in line.words]
     if voice == "silent":
         # Roughly 2.6 words a second, the pace of calm narration.
@@ -106,7 +106,7 @@ def _speak_line(line: Line, voice: str, rate: str, tmp: Path, i: int):
     last_error = None
     for attempt in range(RETRIES):
         try:
-            bounds = asyncio.run(_edge(line.spoken, voice, rate, mp3))
+            bounds = asyncio.run(_edge(line.spoken, voice, rate, mp3, pitch))
             if mp3.exists() and mp3.stat().st_size > 0:
                 break
         except Exception as exc:  # network hiccup or throttling
@@ -120,13 +120,13 @@ def _speak_line(line: Line, voice: str, rate: str, tmp: Path, i: int):
     return audio, align(len(line.words), bounds, len(audio) / SAMPLE_RATE, weights)
 
 
-def narrate(hook: Line, lines: list[Line], voice: str, rate: str = "-5%") -> Narration:
+def narrate(hook: Line, lines: list[Line], voice: str, rate: str = "-5%", pitch: str = "+0Hz") -> Narration:
     """Speak the hook then every line, one after another, and time every word."""
     pieces, words, spans = [], [], {}
     t = 0.0
     with tempfile.TemporaryDirectory() as d:
         for li, line in [(-1, hook)] + list(enumerate(lines)):
-            audio, timing = _speak_line(line, voice, rate, Path(d), li + 1)
+            audio, timing = _speak_line(line, voice, rate, Path(d), li + 1, pitch)
             for wi, (s, e) in enumerate(timing):
                 words.append(TimedWord(li, wi, t + s, t + e))
             dur = len(audio) / SAMPLE_RATE

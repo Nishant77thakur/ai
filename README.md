@@ -55,6 +55,7 @@ title: Your brain decides tomorrow, tonight
 hook: Do this *before bed*            # shown big on the first frame, and spoken first
 voice: en-US-AndrewNeural             # e.g. en-IN-PrabhatNeural, hi-IN-MadhurNeural
 rate: "-5%"                           # speaking speed
+pitch: "+0Hz"                         # e.g. "-8Hz" for a deeper voice
 background: stars                     # or my_photo.jpg / my_clip.mp4 (path relative to this file)
 music: auto                           # auto, none, or my_track.mp3
 music_volume: 0.22

@@ -39,7 +39,7 @@ def write_srt(short: Short, narration: Narration, path: Path) -> None:
 def make(short: Short, out: Path, voice: str | None = None, fps: int = 30, progress=None) -> Result:
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    narration = narrate(short.hook, short.lines, voice or short.voice, short.rate)
+    narration = narrate(short.hook, short.lines, voice or short.voice, short.rate, short.pitch)
     renderer = Renderer(short, narration, fps=fps)
     duration = renderer.plan.duration
 
