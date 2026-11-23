@@ -10,6 +10,7 @@ import asyncio
 import os
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +20,8 @@ from .script import Line
 
 SAMPLE_RATE = 44100
 GAP_AFTER_LINE = 0.35  # seconds of breath between sentences
+RETRIES = 6
+RETRY_WAIT = 2.0  # seconds, grows with each attempt
 
 
 @dataclass
@@ -99,9 +102,20 @@ def _speak_line(line: Line, voice: str, rate: str, tmp: Path, i: int):
         audio = np.zeros(int(dur * SAMPLE_RATE), dtype=np.float32)
         return audio, align(len(line.words), [], dur, weights)
     mp3 = tmp / f"line{i}.mp3"
-    bounds = asyncio.run(_edge(line.spoken, voice, rate, mp3))
-    if not mp3.exists() or mp3.stat().st_size == 0:
-        raise RuntimeError("The voice service returned no audio. Check your internet connection.")
+    # The free voice service sometimes refuses a burst of requests: wait and try again.
+    last_error = None
+    for attempt in range(RETRIES):
+        try:
+            bounds = asyncio.run(_edge(line.spoken, voice, rate, mp3))
+            if mp3.exists() and mp3.stat().st_size > 0:
+                break
+        except Exception as exc:  # network hiccup or throttling
+            last_error = exc
+        time.sleep(RETRY_WAIT * (attempt + 1))
+    else:
+        raise RuntimeError(f"The voice service returned no audio for: {line.spoken!r} "
+                           f"({last_error or 'empty response'}). Check your internet connection "
+                           f"and the voice name, then try again.")
     audio = decode(mp3)
     return audio, align(len(line.words), bounds, len(audio) / SAMPLE_RATE, weights)
 

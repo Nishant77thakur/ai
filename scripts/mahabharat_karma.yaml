@@ -1,0 +1,31 @@
+# Educational Short in Hindi: the Gita's lesson on karma (Bhagavad Gita 2.47).
+title: महाभारत का सबसे बड़ा सबक
+hook: महाभारत का *सबसे बड़ा* सबक
+fonts: hindi
+logo: chakra
+voice: hi-IN-MadhurNeural
+rate: "-8%"
+background: stars        # warm embers rising over a dusk sky (colours below)
+music: auto
+music_volume: 0.2
+brand:
+  accent: "#F5B841"      # gold
+  text: "#FFF4E0"
+  muted: "#D2BFA0"
+  background: "#0A0605"
+  sky_mid: "#2A0F0A"
+  sky_bottom: "#3D1A06"
+  particles: "#FFB347"   # embers
+lines:
+  - कुरुक्षेत्र के युद्ध से ठीक पहले, *अर्जुन* ने अपना धनुष नीचे रख दिया।
+  - सामने उसके अपने ही *गुरु* और *परिवार* वाले खड़े थे।
+  - तब *श्रीकृष्ण* ने उसे जो ज्ञान दिया, वही *भगवद् गीता* है।
+  - गीता के दूसरे अध्याय में वे कहते हैं,
+  - "*कर्मण्येवाधिकारस्ते, मा फलेषु कदाचन।*"
+  - यानी, तुम्हारा अधिकार सिर्फ़ *कर्म* पर है, उसके *फल* पर नहीं।
+  - नतीजे के डर से रुको मत, अपना *पूरा मन* लगाओ।
+  - इसी सीख ने अर्जुन को फिर से *खड़ा* कर दिया।
+  - यही है महाभारत की सबसे बड़ी *सीख*।
+end_card:
+  title: Sleep with *Impact*
+  subtitle: ऐसी और कहानियों के लिए फ़ॉलो करें

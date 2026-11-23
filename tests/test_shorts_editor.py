@@ -32,6 +32,26 @@ def test_highlighted_words_are_parsed():
         script.parse_line("an *unclosed highlight")
 
 
+def test_lone_punctuation_joins_the_word_before():
+    line = script.parse_line("यही है महाभारत की *सीख*।")
+    assert [w.text for w in line.words][-1] == "सीख।" and line.words[-1].accent
+
+
+def test_hindi_script_renders_with_chakra(tmp_path):
+    p = tmp_path / "hi.yaml"
+    p.write_text("hook: महाभारत का *सबसे बड़ा* सबक\nfonts: hindi\nlogo: chakra\n"
+                 "lines:\n  - तब *श्रीकृष्ण* ने ज्ञान दिया।\n", encoding="utf-8")
+    s = script.load(p)
+    r = Renderer(s, narrate(s.hook, s.lines, "silent"), fps=10)
+    assert "Mukta" in r.f_head
+    assert np.asarray(r.frame(0.0)).shape == (1920, 1080, 3)
+    r.bg.close()
+    bad = tmp_path / "bad.yaml"
+    bad.write_text("hook: x\nlogo: star\nlines: [y]\n")
+    with pytest.raises(ValueError, match="logo"):
+        script.load(bad)
+
+
 def test_load_requires_hook_and_lines(tmp_path):
     p = tmp_path / "bad.yaml"
     p.write_text("lines: [hello]\n")

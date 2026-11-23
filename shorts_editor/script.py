@@ -27,6 +27,9 @@ DEFAULT_BRAND = {
     "text": "#F4EDE4",
     "accent": "#FF5A1F",
     "muted": "#A39C94",
+    "sky_mid": "#0B0E1C",
+    "sky_bottom": "#1B100B",
+    "particles": "#F4EDE4",
 }
 
 
@@ -59,6 +62,8 @@ class Short:
     background: str = "stars"
     music: str = "auto"
     music_volume: float = 0.22
+    fonts: str = "latin"  # "latin" or "hindi" (Devanagari)
+    logo: str = "moon"  # "moon", "chakra" or "none"
     brand: dict = field(default_factory=lambda: dict(DEFAULT_BRAND))
     base_dir: Path = Path(".")
 
@@ -72,6 +77,10 @@ def parse_line(text: str) -> Line:
     # Alternate between plain and *accent* chunks.
     for i, chunk in enumerate(re.split(r"\*", text)):
         for token in chunk.split():
+            if words and all(not ch.isalnum() for ch in token):
+                # Punctuation on its own (like "।" after *word*) belongs to the word before.
+                words[-1].text += token
+                continue
             words.append(Word(token, accent=(i % 2 == 1)))
     if text.count("*") % 2:
         raise ValueError(f"Unbalanced * in line: {text!r}")
@@ -102,9 +111,18 @@ def load(path: str | Path) -> Short:
         background=str(data.get("background", "stars")),
         music=str(data.get("music", "auto")),
         music_volume=float(data.get("music_volume", 0.22)),
+        fonts=str(data.get("fonts", "latin")),
+        logo=_choice(data.get("logo", "moon"), ("moon", "chakra", "none"), "logo"),
         brand=brand,
         base_dir=path.parent,
     )
+
+
+def _choice(value, options, key):
+    value = str(value)
+    if value not in options:
+        raise ValueError(f"{key} must be one of {', '.join(options)}, got {value!r}")
+    return value
 
 
 def resolve(short: Short, value: str) -> Path:

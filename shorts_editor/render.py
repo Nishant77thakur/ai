@@ -3,7 +3,7 @@
 Layers, bottom to top:
   background  - generated night sky with twinkling stars, or your image/video with a slow zoom
   shade       - a dark gradient so text always reads
-  moon mark   - the channel's crescent logo, drifting; it moves to the centre for the end card
+  logo        - the crescent moon or a turning chakra, drifting; it moves to the centre for the end card
   hook        - big headline on the very first frame, while the hook is spoken
   captions    - each line's words pop in exactly when they are spoken, the spoken word lit up
   end card    - channel name and a follow line
@@ -27,6 +27,11 @@ FONTS = Path(__file__).parent / "assets" / "fonts"
 HEADLINE_FONT = FONTS / "Anton-Regular.ttf"
 CAPTION_FONT = FONTS / "Inter-ExtraBold.ttf"
 BODY_FONT = FONTS / "Inter-Medium.ttf"
+# headline, caption, body font and headline size for each writing system
+FONT_SETS = {
+    "latin": (HEADLINE_FONT, CAPTION_FONT, BODY_FONT, 190),
+    "hindi": (FONTS / "Mukta-ExtraBold.ttf", FONTS / "Mukta-ExtraBold.ttf", FONTS / "Mukta-SemiBold.ttf", 172),
+}
 END_CARD_SECONDS = 3.2
 HOOK_MIN_SECONDS = 1.6
 CAPTION_SIZE = 104
@@ -141,6 +146,29 @@ def moon_sprite(diameter: int, rgb) -> Image.Image:
     return img.resize((diameter, diameter), Image.LANCZOS)
 
 
+def chakra_sprite(diameter: int, rgb) -> Image.Image:
+    """A golden spoked wheel with a toothed rim, drawn large then shrunk for smooth edges."""
+    s = diameter * 4
+    c = s / 2
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    col = rgb + (255,)
+    teeth = 24
+    pts = []
+    for k in range(teeth * 2):
+        a = math.pi * k / teeth
+        r = c * (0.98 if k % 2 == 0 else 0.86)
+        pts.append((c + r * math.cos(a), c + r * math.sin(a)))
+    d.polygon(pts, fill=col)
+    d.ellipse((c - c * 0.74, c - c * 0.74, c + c * 0.74, c + c * 0.74), fill=(0, 0, 0, 0))
+    for k in range(12):
+        a = math.tau * k / 12
+        d.line((c, c, c + c * 0.75 * math.cos(a), c + c * 0.75 * math.sin(a)), fill=col, width=int(s * 0.035))
+    d.ellipse((c - c * 0.2, c - c * 0.2, c + c * 0.2, c + c * 0.2), fill=col)
+    d.ellipse((c - c * 0.08, c - c * 0.08, c + c * 0.08, c + c * 0.08), fill=(0, 0, 0, 0))
+    return img.resize((diameter, diameter), Image.LANCZOS)
+
+
 def glow_sprite(diameter: int, rgb, strength: float = 0.28) -> Image.Image:
     yy, xx = np.mgrid[0:diameter, 0:diameter]
     r = np.hypot(xx - diameter / 2, yy - diameter / 2) / (diameter / 2)
@@ -172,8 +200,9 @@ class Background:
                 self.video_path = path
         # Vertical gradient: brand background at the top, a warm glow at the bottom.
         top = np.array(base, dtype=np.float32)
-        mid = np.array([11, 14, 28], dtype=np.float32)
-        bottom = np.array([27, 16, 11], dtype=np.float32)
+        mid = np.array(hex_rgb(short.brand["sky_mid"]), dtype=np.float32)
+        bottom = np.array(hex_rgb(short.brand["sky_bottom"]), dtype=np.float32)
+        self.particle_rgb = np.array(hex_rgb(short.brand["particles"]), dtype=np.float32) / 255
         y = np.linspace(0, 1, H, dtype=np.float32)[:, None]
         grad = np.where(y < 0.55, top + (mid - top) * (y / 0.55), mid + (bottom - mid) * ((y - 0.55) / 0.45))
         self.sky = Image.fromarray(np.repeat(grad[:, None, :], W, axis=1).reshape(H, W, 3).astype(np.uint8), "RGB")
@@ -222,9 +251,9 @@ class Background:
             for x, y0, size, speed, tw, ph in self.stars:
                 y = (y0 - t * speed) % H
                 b = 0.25 + 0.75 * (0.5 + 0.5 * math.sin(t * tw + ph))
-                c = int(90 + 165 * b)
+                c = (90 + 165 * b) * self.particle_rgb
                 r = size * (0.7 + 0.3 * b) / 2
-                d.ellipse((x - r, y - r, x + r, y + r), fill=(c, c, int(c * 0.95)))
+                d.ellipse((x - r, y - r, x + r, y + r), fill=tuple(int(v) for v in c))
         canvas = canvas.convert("RGBA")
         canvas.alpha_composite(self.shade)
         return canvas
@@ -263,11 +292,19 @@ class Renderer:
         self.text_rgb, self.accent_rgb, self.muted_rgb = hex_rgb(b["text"]), hex_rgb(b["accent"]), hex_rgb(b["muted"])
         self.plan = plan(short, narration)
         self.bg = Background(short, fps)
-        self.moon = moon_sprite(170, self.accent_rgb)
+        if short.fonts not in FONT_SETS:
+            raise ValueError(f"fonts must be one of {sorted(FONT_SETS)}, got {short.fonts!r}")
+        head, cap, body, self.head_size = FONT_SETS[short.fonts]
+        self.f_head, self.f_cap, self.f_body = str(head), str(cap), str(body)
+        upper = short.fonts == "latin"
+        self.logo = {"moon": lambda: moon_sprite(170, self.accent_rgb),
+                     "chakra": lambda: chakra_sprite(190, self.accent_rgb),
+                     "none": lambda: None}[short.logo]()
         self.glow = glow_sprite(520, self.accent_rgb)
-        self.hook_layout = layout(short.hook, str(HEADLINE_FONT), 190, 900, H * 0.44, upper=True)
-        self.layouts = [layout(line, str(CAPTION_FONT), CAPTION_SIZE, 920, H * 0.5) for line in short.lines]
-        self.end_layout = layout(short.end_title, str(HEADLINE_FONT), 150, 920, H * 0.56, upper=True)
+        self.hook_layout = layout(short.hook, self.f_head, self.head_size, 900, H * 0.44, upper=upper)
+        self.layouts = [layout(line, self.f_cap, CAPTION_SIZE, 920, H * 0.5) for line in short.lines]
+        self.end_size = int(self.head_size * 0.79)
+        self.end_layout = layout(short.end_title, self.f_head, self.end_size, 920, H * 0.56, upper=upper)
         self.word_times = {}
         for tw in narration.words:
             self.word_times[(tw.line, tw.index)] = (tw.start, tw.end)
@@ -286,8 +323,13 @@ class Renderer:
         x = (W - 190 + math.sin(t * 0.3) * 10) * (1 - p) + (W / 2) * p
         y = (230 + t * 1.8) * (1 - p) + (H * 0.37) * p
         s = 1 + 0.45 * p
+        if self.logo is None:
+            return
         paste_centered(canvas, self.glow, x, y, s)
-        paste_centered(canvas, self.moon, x, y, s)
+        sprite = self.logo
+        if self.short.logo == "chakra":  # the wheel turns slowly, faster as it arrives at the end
+            sprite = sprite.rotate(-(t * 25 + p * 180), resample=Image.BICUBIC)
+        paste_centered(canvas, sprite, x, y, s)
 
     def _hook(self, canvas, t: float) -> None:
         end = self.plan.hook_end
@@ -297,7 +339,7 @@ class Renderer:
         breathe = 1 + 0.03 * min(1.0, t / max(0.1, end))
         for p in self.hook_layout:
             rgb = self.accent_rgb if p.accent else self.text_rgb
-            sprite = word_sprite(p.text, str(HEADLINE_FONT), 190, rgb)
+            sprite = word_sprite(p.text, self.f_head, self.head_size, rgb)
             cx = W / 2 + (p.cx - W / 2) * breathe
             cy = H * 0.44 + (p.cy - H * 0.44) * breathe - out * 80
             paste_centered(canvas, sprite, cx, cy, breathe * (1 + 0.15 * out), 1 - out)
@@ -312,13 +354,13 @@ class Renderer:
                 if t < ws - 0.04:
                     # Not spoken yet: shown faintly so the sentence keeps its shape.
                     ghost = 0.22 * ease_out((t - s) / 0.2) * (1 - leave)
-                    sprite = word_sprite(p.text, str(CAPTION_FONT), CAPTION_SIZE, self.text_rgb)
+                    sprite = word_sprite(p.text, self.f_cap, CAPTION_SIZE, self.text_rgb)
                     paste_centered(canvas, sprite, p.cx, p.cy - leave * 50, 1.0, ghost)
                     continue
                 pop = ease_back((t - ws + 0.04) / 0.22)
                 speaking = ws - 0.04 <= t <= we + 0.08
                 rgb = self.accent_rgb if (p.accent or speaking) else self.text_rgb
-                sprite = word_sprite(p.text, str(CAPTION_FONT), CAPTION_SIZE, rgb)
+                sprite = word_sprite(p.text, self.f_cap, CAPTION_SIZE, rgb)
                 scale = (0.55 + 0.45 * pop) * (1.07 if speaking else 1.0)
                 paste_centered(canvas, sprite, p.cx, p.cy - leave * 50, scale, min(1.0, pop * 1.4) * (1 - leave))
 
@@ -331,12 +373,12 @@ class Renderer:
             if pop <= 0:
                 continue
             rgb = self.accent_rgb if p.accent else self.text_rgb
-            paste_centered(canvas, word_sprite(p.text, str(HEADLINE_FONT), 150, rgb), p.cx, p.cy,
+            paste_centered(canvas, word_sprite(p.text, self.f_head, self.end_size, rgb), p.cx, p.cy,
                            0.6 + 0.4 * pop, min(1.0, pop * 1.3))
         sub = ease_out((lt - 0.9) / 0.5)
         if sub > 0:
             last_y = max(p.cy for p in self.end_layout)
-            sprite = word_sprite(self.short.end_subtitle, str(BODY_FONT), 50, self.muted_rgb)
+            sprite = word_sprite(self.short.end_subtitle, self.f_body, 50, self.muted_rgb)
             paste_centered(canvas, sprite, W / 2, last_y + 130 + (1 - sub) * 30, 1.0, sub)
 
     # -- output ---------------------------------------------------------------------

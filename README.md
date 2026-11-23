@@ -58,6 +58,8 @@ rate: "-5%"                           # speaking speed
 background: stars                     # or my_photo.jpg / my_clip.mp4 (path relative to this file)
 music: auto                           # auto, none, or my_track.mp3
 music_volume: 0.22
+fonts: latin                          # hindi for Devanagari text
+logo: moon                            # moon, chakra or none
 lines:
   - Your brain decides tomorrow... *tonight.*
   - While you sleep, your brain *sorts* through your day.
@@ -67,7 +69,16 @@ end_card:
 brand:                                # optional; these are the defaults
   accent: "#FF5A1F"
   text: "#F4EDE4"
+  sky_mid: "#0B0E1C"                  # background gradient
+  sky_bottom: "#1B100B"
+  particles: "#F4EDE4"                # stars (or embers, in a warm colour)
 ```
+
+### Hindi
+
+`scripts/mahabharat_karma.yaml` is a full Hindi example: an educational Short on the
+Bhagavad Gita's lesson on karma, with a Hindi voice (`hi-IN-MadhurNeural`), Devanagari
+captions (`fonts: hindi`), a turning golden chakra (`logo: chakra`) and rising embers.
 
 Tips that make Shorts perform better:
 
@@ -91,7 +102,7 @@ shorts_editor/
   render.py     motion graphics and video encoding
   pipeline.py   script in, video + captions + cover out
   cli.py        the make / preview / voices commands
-  assets/fonts  Anton and Inter (SIL Open Font License)
+  assets/fonts  Anton, Inter and Mukta (SIL Open Font License)
 scripts/        your Short scripts
 tests/
 ```
