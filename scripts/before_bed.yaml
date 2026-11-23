@@ -1,0 +1,21 @@
+# A Short for Sleep With Impact. Words in *asterisks* are highlighted.
+title: Your brain decides tomorrow, tonight
+hook: Do this *before bed*
+voice: en-US-AndrewNeural      # list voices: python -m shorts_editor voices --lang en
+rate: "-5%"                    # slower, calmer delivery
+background: stars              # or a path to your own image / video
+music: auto                    # auto = generated calm pad, none, or a path to an mp3
+music_volume: 0.22
+lines:
+  - Your brain decides tomorrow... *tonight.*
+  - While you sleep, your brain *sorts* through your day.
+  - It keeps what *matters*. It clears what doesn't.
+  - So the last *ten minutes* before bed matter.
+  - Scroll through *stress*, and you carry it into the night.
+  - Instead, write *one win* from today.
+  - Write the *first thing* you'll do tomorrow.
+  - Then put the *phone* away.
+  - Wake up with a *plan*, not a worry.
+end_card:
+  title: Sleep with *Impact*
+  subtitle: Follow for one idea every night

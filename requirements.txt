@@ -1,0 +1,6 @@
+edge-tts>=7.0
+numpy>=1.26
+pillow>=10.0
+pyyaml>=6.0
+# tests
+pytest>=8.0
